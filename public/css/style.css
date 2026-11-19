@@ -1,0 +1,135 @@
+/* ==========================================================
+   PetCareApp custom styles (Task 9)
+   Linked on every page AFTER Bootstrap, so these rules win
+   when they have the same specificity as Bootstrap's rules.
+   Only appearance changes here - no app behaviour.
+   ========================================================== */
+
+/* ---------- 1. Colours used across the app ---------- */
+:root {
+  --pc-primary: #0f766e;        /* teal - main brand colour */
+  --pc-primary-dark: #115e59;   /* darker teal for hover */
+  --pc-page-bg: #f4f7f6;        /* light grey-green page background */
+  --pc-text: #1f2933;
+  --pc-radius: 10px;
+  --pc-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------- 2. Page ---------- */
+body {
+  background-color: var(--pc-page-bg);
+  color: var(--pc-text);
+}
+
+h1, h2, .h2 {
+  font-weight: 600;
+}
+
+/* ---------- 3. Navbar ---------- */
+.navbar {
+  border-bottom: 3px solid var(--pc-primary);
+}
+
+.navbar-brand {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* ---------- 4. Buttons ----------
+   Bootstrap 5.3 builds each button from CSS variables
+   (--bs-btn-bg, --bs-btn-border-color ...). Changing those
+   variables recolours the button everywhere it is used. */
+.btn {
+  border-radius: 8px;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--pc-primary);
+  --bs-btn-border-color: var(--pc-primary);
+  --bs-btn-hover-bg: var(--pc-primary-dark);
+  --bs-btn-hover-border-color: var(--pc-primary-dark);
+  --bs-btn-active-bg: var(--pc-primary-dark);
+  --bs-btn-active-border-color: var(--pc-primary-dark);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--pc-primary);
+  --bs-btn-border-color: var(--pc-primary);
+  --bs-btn-hover-bg: var(--pc-primary);
+  --bs-btn-hover-border-color: var(--pc-primary);
+  --bs-btn-active-bg: var(--pc-primary-dark);
+  --bs-btn-active-border-color: var(--pc-primary-dark);
+}
+
+/* ---------- 5. Cards ---------- */
+.card {
+  border: none;
+  border-radius: var(--pc-radius);
+  box-shadow: var(--pc-shadow);
+}
+
+.card-header:first-child {
+  border-radius: var(--pc-radius) var(--pc-radius) 0 0;
+}
+
+/* ---------- 6. Tables ---------- */
+.table {
+  --bs-table-bg: #ffffff;
+  box-shadow: var(--pc-shadow);
+}
+
+.table thead th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------- 7. Forms ---------- */
+.form-label,
+.col-form-label {
+  font-weight: 500;
+}
+
+.form-control,
+.form-select {
+  border-radius: 8px;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--pc-primary);
+  box-shadow: 0 0 0 0.2rem rgba(15, 118, 110, 0.25);
+}
+
+/* ---------- 8. Alerts (flash messages) ---------- */
+.alert {
+  border-radius: var(--pc-radius);
+}
+
+/* ---------- 9. Status badges ----------
+   The view adds "status-" + the status from the database,
+   e.g. class="badge status-badge status-pending". */
+.status-badge {
+  border-radius: 999px;
+  padding: 0.4em 0.75em;
+  font-weight: 600;
+  text-transform: capitalize;
+  background-color: #adb5bd;    /* fallback for any other status */
+  color: #212529;
+}
+
+.status-pending {
+  background-color: #f59e0b;    /* amber - waiting */
+  color: #212529;               /* dark text for good contrast */
+}
+
+.status-cancelled {
+  background-color: #6c757d;    /* grey - no longer active */
+  color: #ffffff;
+}
+
+.status-paid,
+.status-confirmed,
+.status-completed {
+  background-color: #198754;    /* green - for future statuses */
+  color: #ffffff;
+}

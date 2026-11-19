@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Reschedule Booking</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <%- include('partials/navbar') %>
@@ -24,7 +25,13 @@
         <p class="mb-1"><strong>Service:</strong> <%= booking.service_name %></p>
         <p class="mb-1"><strong>Price:</strong> S$<%= Number(booking.booked_price).toFixed(2) %></p>
         <p class="mb-1"><strong>Current date:</strong> <%= booking.booking_date %></p>
-        <p class="mb-0"><strong>Payment status:</strong> <%= booking.payment_status || 'No payment record' %></p>
+        <p class="mb-0"><strong>Payment status:</strong>
+          <% if (booking.payment_status) { %>
+            <span class="badge status-badge status-<%= booking.payment_status %>"><%= booking.payment_status %></span>
+          <% } else { %>
+            No payment record
+          <% } %>
+        </p>
       </div>
     </div>
 
