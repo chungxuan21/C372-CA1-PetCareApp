@@ -61,6 +61,7 @@
                 </td>
                 <td>
                   <% if (bookings[i].booking_status === 'pending') { %>
+                    <a href="/bookings/<%= bookings[i].booking_id %>/reschedule" class="btn btn-sm btn-outline-primary me-1">Reschedule</a>
                     <form action="/bookings/<%= bookings[i].booking_id %>/cancel" method="POST" class="d-inline"
                       onsubmit="return confirm('Cancel this booking? No payment has been collected.');">
                       <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>

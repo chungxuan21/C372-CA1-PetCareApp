@@ -144,4 +144,78 @@ function cancelBooking(req, res) {
   });
 }
 
-module.exports = { listServices, createBooking, listBookings, cancelBooking };
+// Exact messages from specs/service-booking.md section 12
+const MSG_RESCHEDULED = 'Booking rescheduled. Payment is still pending.';
+const MSG_BAD_DATE = 'Choose a valid booking date (today or later).';
+const MSG_CANNOT_RESCHEDULE = 'That booking cannot be rescheduled.';
+const MSG_RESCHEDULE_ERROR = 'Unable to reschedule the booking. Please try again.';
+
+// GET /bookings/:id/reschedule - show the form for the owner's own pending booking
+function rescheduleForm(req, res) {
+  const ownerId = req.session.user.id; // from the session, never from the request
+  const bookingId = req.params.id;
+
+  if (!isPositiveInteger(bookingId)) {
+    req.flash('error', MSG_CANNOT_RESCHEDULE);
+    return res.redirect('/bookings');
+  }
+
+  serviceBookingModel.getPendingBookingForOwner(ownerId, Number(bookingId), (err, booking) => {
+    if (err) {
+      console.error('Error loading booking to reschedule:', err);
+      req.flash('error', MSG_RESCHEDULE_ERROR);
+      return res.redirect('/bookings');
+    }
+    if (!booking) {
+      req.flash('error', MSG_CANNOT_RESCHEDULE);
+      return res.redirect('/bookings');
+    }
+    res.render('rescheduleBooking', {
+      booking,
+      today: getToday(),
+      errors: req.flash('error'),
+      session: req.session
+    });
+  });
+}
+
+// POST /bookings/:id/reschedule - validate the new date, then change booking_date only
+function rescheduleBooking(req, res) {
+  const ownerId = req.session.user.id; // from the session, never from the request
+  const bookingId = req.params.id;
+  const { bookingDate } = req.body;
+
+  if (!isPositiveInteger(bookingId)) {
+    req.flash('error', MSG_CANNOT_RESCHEDULE);
+    return res.redirect('/bookings');
+  }
+
+  // Same date rule as booking a service (section 4)
+  if (!isValidBookingDate(bookingDate, getToday())) {
+    req.flash('error', MSG_BAD_DATE);
+    return res.redirect(`/bookings/${bookingId}/reschedule`); // back to the form
+  }
+
+  serviceBookingModel.reschedulePendingBooking(ownerId, Number(bookingId), bookingDate, (err, result) => {
+    if (err) {
+      console.error('Error rescheduling booking:', err);
+      req.flash('error', MSG_RESCHEDULE_ERROR);
+      return res.redirect('/bookings');
+    }
+    if (!result) {
+      req.flash('error', MSG_CANNOT_RESCHEDULE);
+      return res.redirect('/bookings');
+    }
+    req.flash('success', MSG_RESCHEDULED);
+    return res.redirect('/bookings');
+  });
+}
+
+module.exports = {
+  listServices,
+  createBooking,
+  listBookings,
+  cancelBooking,
+  rescheduleForm,
+  rescheduleBooking
+};

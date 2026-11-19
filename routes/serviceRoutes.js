@@ -7,5 +7,7 @@ router.get('/services', isLoggedIn, serviceController.listServices);
 router.post('/services/book', isLoggedIn, serviceController.createBooking);
 router.get('/bookings', isLoggedIn, serviceController.listBookings);
 router.post('/bookings/:id/cancel', isLoggedIn, serviceController.cancelBooking);
+router.get('/bookings/:id/reschedule', isLoggedIn, serviceController.rescheduleForm);
+router.post('/bookings/:id/reschedule', isLoggedIn, serviceController.rescheduleBooking);
 
 module.exports = router;

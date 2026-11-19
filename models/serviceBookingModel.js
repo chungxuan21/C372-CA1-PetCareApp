@@ -136,4 +136,51 @@ function cancelPendingBooking(ownerId, bookingId, callback) {
   });
 }
 
-module.exports = { createPendingBooking, getBookingsByOwner, cancelPendingBooking };
+// Revision 1 (spec section 12): load ONE booking for the reschedule form.
+// Returns the row only if the pet belongs to this owner AND the booking is pending.
+function getPendingBookingForOwner(ownerId, bookingId, callback) {
+  const sql = `
+    SELECT sb.id AS booking_id,
+           DATE_FORMAT(sb.booking_date, '%Y-%m-%d') AS booking_date,
+           p.name AS pet_name,
+           s.name AS service_name,
+           sb.booked_price,
+           sb.booking_status,
+           pay.payment_status
+    FROM service_bookings AS sb
+    JOIN pets AS p ON p.id = sb.pet_id
+    JOIN services AS s ON s.id = sb.service_id
+    LEFT JOIN payments AS pay ON pay.booking_id = sb.id
+    WHERE sb.id = ? AND p.owner_id = ? AND sb.booking_status = 'pending'`;
+  pool.query(sql, [bookingId, ownerId], (err, rows) => {
+    if (err) return callback(err);
+    callback(null, rows.length ? rows[0] : null);
+  });
+}
+
+// Revision 1 (spec section 12): change ONLY booking_date of the owner's pending booking.
+// One UPDATE on one table, so no transaction is needed. The payments table is not touched.
+// Callback outcomes:
+//   callback(null, { bookingId })  -> date changed
+//   callback(null, null)           -> not this owner's booking / not pending / not found
+//   callback(err)                  -> database failure
+function reschedulePendingBooking(ownerId, bookingId, newDate, callback) {
+  const sql = `
+    UPDATE service_bookings AS sb
+    JOIN pets AS p ON p.id = sb.pet_id
+    SET sb.booking_date = ?
+    WHERE sb.id = ? AND p.owner_id = ? AND sb.booking_status = 'pending'`;
+  pool.query(sql, [newDate, bookingId, ownerId], (err, result) => {
+    if (err) return callback(err);
+    if (result.affectedRows !== 1) return callback(null, null);
+    callback(null, { bookingId });
+  });
+}
+
+module.exports = {
+  createPendingBooking,
+  getBookingsByOwner,
+  cancelPendingBooking,
+  getPendingBookingForOwner,
+  reschedulePendingBooking
+};
