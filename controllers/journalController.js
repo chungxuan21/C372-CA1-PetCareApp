@@ -37,6 +37,8 @@ function listJournals(req, res) {
         pets,
         selectedPetId,
         pet: petInfo,
+        messages: req.flash('success'),
+        errors: req.flash('error'),
         session: req.session
       });
     });
