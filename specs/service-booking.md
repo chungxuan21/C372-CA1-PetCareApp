@@ -30,6 +30,7 @@ not charge the customer or confirm that payment has been made.
 - Preserve the service price at booking time as the booking price.
 - Show the customer's booking and payment statuses in Booking History.
 - Revision 1: cancel or reschedule the customer's own pending booking (sections 11-13).
+- Revision 2: filter Booking History by booking status (section 14).
 - Display validation, unavailable-item, and database error outcomes.
 
 ### Not included
@@ -374,3 +375,38 @@ Booking History shows a Reschedule button only on pending rows.
   changes.
 - **AC16:** Given a visitor is not signed in, when they use any cancel or
   reschedule route, then they are redirected to `/login`.
+
+## 14. Revision 2 (19 November 2026): Filter Booking History by status
+
+This revision only changes what Booking History displays. It does not create,
+change or delete any booking or payment.
+
+| Item | Rule |
+| --- | --- |
+| Who | The signed-in customer, on their own Booking History (login required, as AC8) |
+| Request | `GET /bookings?status=<value>` (query string) |
+| Allowed values | `pending`, `cancelled`; `all` or no value shows every booking |
+| Any other value | Treated as All. No error message, and the value is never used in SQL. |
+| Ownership | Still only bookings for pets owned by `req.session.user.id`; the filter is added to that rule, never instead of it |
+| SQL | The status is passed as a `?` parameter, never joined into the SQL text |
+| Order | Newest first, as before |
+| Page | All / Pending / Cancelled buttons; the selected one is highlighted |
+| Empty filtered list | "No bookings match this filter." |
+| Actions | Cancel and Reschedule appear on pending rows in any filtered view and work as in sections 11-12; afterwards the customer returns to `/bookings` (All) with the usual message |
+
+Acceptance criteria:
+
+- **AC17:** Given Clara has pending and cancelled bookings, when she opens
+  `/bookings?status=pending`, then only her pending bookings are shown and the
+  Pending button is highlighted.
+- **AC18:** When she opens `/bookings?status=cancelled`, then only her cancelled
+  bookings are shown.
+- **AC19:** When she opens `/bookings`, `/bookings?status=all` or a value that is
+  not allowed (for example `?status=paid` or `?status=' OR 1=1 --`), then all of
+  her own bookings are shown and no other customer's bookings appear.
+- **AC20:** Given Ben is signed in, when he uses any filter, then he sees only his
+  own bookings.
+- **AC21:** Given a filtered list shows a pending booking, when Clara uses Cancel
+  or Reschedule on it, then the action works as in AC9/AC13.
+- **AC22:** Given a filter has no matching bookings, then "No bookings match this
+  filter." is shown.

@@ -26,8 +26,30 @@
       <% } %>
     <% } %>
 
+    <%
+      const filters = [
+        { value: 'all', label: 'All', href: '/bookings' },
+        { value: 'pending', label: 'Pending', href: '/bookings?status=pending' },
+        { value: 'cancelled', label: 'Cancelled', href: '/bookings?status=cancelled' }
+      ];
+    %>
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <span class="text-secondary">Show:</span>
+      <div class="btn-group" role="group" aria-label="Filter bookings by status">
+        <% for (let f = 0; f < filters.length; f++) { %>
+          <a href="<%= filters[f].href %>"
+            class="btn btn-sm <%= currentStatus === filters[f].value ? 'btn-dark' : 'btn-outline-dark' %>"
+            <%= currentStatus === filters[f].value ? 'aria-current=page' : '' %>><%= filters[f].label %></a>
+        <% } %>
+      </div>
+    </div>
+
     <% if (!bookings.length) { %>
-      <div class="alert alert-info">You have no bookings yet.</div>
+      <% if (currentStatus === 'all') { %>
+        <div class="alert alert-info">You have no bookings yet.</div>
+      <% } else { %>
+        <div class="alert alert-info">No bookings match this filter.</div>
+      <% } %>
     <% } else { %>
       <div class="table-responsive">
         <table class="table table-striped table-hover align-middle">

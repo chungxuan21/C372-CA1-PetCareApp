@@ -66,7 +66,10 @@ function createPendingBooking(ownerId, petId, serviceId, bookingDate, callback) 
 
 // Booking History: only bookings for pets owned by this owner, newest first.
 // LEFT JOIN payments keeps a booking visible even if it has no payment row.
-function getBookingsByOwner(ownerId, callback) {
+// Revision 2: optional status filter. status is null (All) or a value the
+// controller has already checked against its allowed list. It is still sent
+// as a ? parameter, never joined into the SQL text.
+function getBookingsByOwner(ownerId, status, callback) {
   const sql = `
     SELECT sb.id AS booking_id,
            DATE_FORMAT(sb.booking_date, '%Y-%m-%d') AS booking_date,
@@ -81,9 +84,17 @@ function getBookingsByOwner(ownerId, callback) {
     JOIN pets AS p ON p.id = sb.pet_id
     JOIN services AS s ON s.id = sb.service_id
     LEFT JOIN payments AS pay ON pay.booking_id = sb.id
-    WHERE p.owner_id = ?
-    ORDER BY sb.created_at DESC, sb.id DESC`;
-  pool.query(sql, [ownerId], callback);
+    WHERE p.owner_id = ?`;
+  const params = [ownerId];
+
+  let filterSql = '';
+  if (status) {
+    filterSql = ' AND sb.booking_status = ?';
+    params.push(status);
+  }
+
+  const orderSql = ' ORDER BY sb.created_at DESC, sb.id DESC';
+  pool.query(sql + filterSql + orderSql, params, callback);
 }
 
 // Revision 1: cancel the owner's own PENDING booking and its payment in ONE transaction.

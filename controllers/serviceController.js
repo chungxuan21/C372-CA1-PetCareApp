@@ -100,11 +100,19 @@ function createBooking(req, res) {
   );
 }
 
-// GET /bookings - Booking History for the signed-in owner only
+// Revision 2 (spec section 14): the only statuses the filter accepts
+const ALLOWED_STATUSES = ['pending', 'cancelled'];
+
+// GET /bookings?status=... - Booking History for the signed-in owner only
 function listBookings(req, res) {
   const ownerId = req.session.user.id; // from the session, never from the URL
 
-  serviceBookingModel.getBookingsByOwner(ownerId, (err, bookings) => {
+  // Allowed list: anything that is not exactly 'pending' or 'cancelled' means All
+  const requested = req.query.status;
+  const currentStatus = ALLOWED_STATUSES.includes(requested) ? requested : 'all';
+  const statusFilter = currentStatus === 'all' ? null : currentStatus;
+
+  serviceBookingModel.getBookingsByOwner(ownerId, statusFilter, (err, bookings) => {
     if (err) {
       console.error('Error loading booking history:', err);
       return res.status(500).send('Unable to load booking history.');
@@ -112,6 +120,7 @@ function listBookings(req, res) {
 
     res.render('bookings', {
       bookings,
+      currentStatus,
       messages: req.flash('success'),
       errors: req.flash('error'),
       session: req.session
