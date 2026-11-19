@@ -64,4 +64,26 @@ function createPendingBooking(ownerId, petId, serviceId, bookingDate, callback) 
   });
 }
 
-module.exports = { createPendingBooking };
+// Booking History: only bookings for pets owned by this owner, newest first.
+// LEFT JOIN payments keeps a booking visible even if it has no payment row.
+function getBookingsByOwner(ownerId, callback) {
+  const sql = `
+    SELECT sb.id AS booking_id,
+           DATE_FORMAT(sb.booking_date, '%Y-%m-%d') AS booking_date,
+           p.name AS pet_name,
+           s.name AS service_name,
+           sb.booked_price,
+           sb.booking_status,
+           pay.payment_status,
+           pay.payment_reference,
+           sb.created_at
+    FROM service_bookings AS sb
+    JOIN pets AS p ON p.id = sb.pet_id
+    JOIN services AS s ON s.id = sb.service_id
+    LEFT JOIN payments AS pay ON pay.booking_id = sb.id
+    WHERE p.owner_id = ?
+    ORDER BY sb.created_at DESC, sb.id DESC`;
+  pool.query(sql, [ownerId], callback);
+}
+
+module.exports = { createPendingBooking, getBookingsByOwner };

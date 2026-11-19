@@ -100,4 +100,23 @@ function createBooking(req, res) {
   );
 }
 
-module.exports = { listServices, createBooking };
+// GET /bookings - Booking History for the signed-in owner only
+function listBookings(req, res) {
+  const ownerId = req.session.user.id; // from the session, never from the URL
+
+  serviceBookingModel.getBookingsByOwner(ownerId, (err, bookings) => {
+    if (err) {
+      console.error('Error loading booking history:', err);
+      return res.status(500).send('Unable to load booking history.');
+    }
+
+    res.render('bookings', {
+      bookings,
+      messages: req.flash('success'),
+      errors: req.flash('error'),
+      session: req.session
+    });
+  });
+}
+
+module.exports = { listServices, createBooking, listBookings };
