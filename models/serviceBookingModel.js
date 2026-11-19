@@ -1,0 +1,67 @@
+const pool = require('../config/db');
+
+// Roll back, release the connection, then report the original error.
+function rollbackWithError(conn, err, callback) {
+  conn.rollback(() => {
+    conn.release();
+    callback(err);
+  });
+}
+
+// Create one pending booking and one pending payment in ONE transaction.
+// Callback outcomes:
+//   callback(null, { bookingId, paymentId })  -> both rows committed
+//   callback(null, null)                      -> pet not owned / service not active
+//   callback(err)                             -> database failure (rolled back)
+function createPendingBooking(ownerId, petId, serviceId, bookingDate, callback) {
+  pool.getConnection((err, conn) => {
+    if (err) return callback(err);
+
+    conn.beginTransaction((err) => {
+      if (err) {
+        conn.release();
+        return callback(err);
+      }
+
+      // Insert ONLY if the pet belongs to the signed-in owner AND the service is active.
+      // The price is copied from services.price - never from the browser.
+      const bookingSql = `
+        INSERT INTO service_bookings (pet_id, service_id, booking_status, booked_price, booking_date)
+        SELECT p.id, s.id, 'pending', s.price, ?
+        FROM pets AS p
+        JOIN services AS s ON s.id = ? AND s.is_active = 1
+        WHERE p.id = ? AND p.owner_id = ?`;
+
+      conn.query(bookingSql, [bookingDate, serviceId, petId, ownerId], (err, result) => {
+        if (err) return rollbackWithError(conn, err, callback);
+
+        // 0 rows inserted = not the owner's pet, or service unknown/inactive
+        if (result.affectedRows !== 1) {
+          return conn.rollback(() => {
+            conn.release();
+            callback(null, null);
+          });
+        }
+
+        const bookingId = result.insertId;
+
+        // Payment amount is copied from the booking's stored price
+        const paymentSql = `
+          INSERT INTO payments (booking_id, amount, payment_status)
+          SELECT id, booked_price, 'pending' FROM service_bookings WHERE id = ?`;
+
+        conn.query(paymentSql, [bookingId], (err, payResult) => {
+          if (err) return rollbackWithError(conn, err, callback);
+
+          conn.commit((err) => {
+            if (err) return rollbackWithError(conn, err, callback);
+            conn.release();
+            callback(null, { bookingId, paymentId: payResult.insertId });
+          });
+        });
+      });
+    });
+  });
+}
+
+module.exports = { createPendingBooking };
