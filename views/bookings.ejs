@@ -40,6 +40,7 @@
               <th scope="col">Price</th>
               <th scope="col">Booking Status</th>
               <th scope="col">Payment Status</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -56,6 +57,16 @@
                     <span class="badge text-bg-secondary"><%= bookings[i].payment_status %></span>
                   <% } else { %>
                     <span class="text-secondary">No payment record</span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (bookings[i].booking_status === 'pending') { %>
+                    <form action="/bookings/<%= bookings[i].booking_id %>/cancel" method="POST" class="d-inline"
+                      onsubmit="return confirm('Cancel this booking? No payment has been collected.');">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+                    </form>
+                  <% } else { %>
+                    <span class="text-secondary">&mdash;</span>
                   <% } %>
                 </td>
               </tr>

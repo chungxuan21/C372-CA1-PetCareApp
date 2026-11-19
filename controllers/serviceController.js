@@ -119,4 +119,29 @@ function listBookings(req, res) {
   });
 }
 
-module.exports = { listServices, createBooking, listBookings };
+// POST /bookings/:id/cancel - Revision 1 (spec section 11)
+function cancelBooking(req, res) {
+  const ownerId = req.session.user.id; // from the session, never from the request
+  const bookingId = req.params.id;
+
+  if (!isPositiveInteger(bookingId)) {
+    req.flash('error', 'That booking cannot be cancelled.');
+    return res.redirect('/bookings');
+  }
+
+  serviceBookingModel.cancelPendingBooking(ownerId, Number(bookingId), (err, result) => {
+    if (err) {
+      console.error('Error cancelling booking:', err);
+      req.flash('error', 'Unable to cancel the booking. Please try again.');
+      return res.redirect('/bookings');
+    }
+    if (!result) {
+      req.flash('error', 'That booking cannot be cancelled.');
+      return res.redirect('/bookings');
+    }
+    req.flash('success', 'Booking cancelled. No payment was collected.');
+    return res.redirect('/bookings');
+  });
+}
+
+module.exports = { listServices, createBooking, listBookings, cancelBooking };

@@ -29,6 +29,7 @@ not charge the customer or confirm that payment has been made.
 - Save the booking and its pending payment record in one database transaction.
 - Preserve the service price at booking time as the booking price.
 - Show the customer's booking and payment statuses in Booking History.
+- Revision 1: cancel or reschedule the customer's own pending booking (sections 11-13).
 - Display validation, unavailable-item, and database error outcomes.
 
 ### Not included
@@ -36,7 +37,9 @@ not charge the customer or confirm that payment has been made.
 - Real payment processing, payment-provider integration, or collection of
   payment credentials.
 - Confirming a booking based on payment-provider approval.
-- Cancelling or rescheduling bookings.
+- Cancelling or rescheduling bookings that are not pending (Revision 1 allows
+  pending bookings only - see sections 11-13).
+- Refunds, changing the pet or service of a booking, and admin booking actions.
 - Appointment time slots, capacity checks, or staff assignment.
 - Booking a pet owned by another customer.
 
@@ -261,6 +264,8 @@ requirements for this exercise:
 - What booking and payment status transitions should follow a real payment
   provider response?
 - Should booking history include cancelled bookings or payment references?
+  Revision 1 decision: cancelled bookings stay visible with status `cancelled`;
+  payment references are still not shown.
 
 Do not silently add these behaviours. Agree on any change and update the
 specification first.
@@ -297,3 +302,75 @@ Record your own actual results:
 | AC7 | Not run | Not assessed |
 | AC8 | Not run | Not assessed |
 | Regression | Not run | Not assessed |
+
+## 11. Revision 1 (19 November 2026): Cancel a pending booking
+
+Agreed before implementation, following the rule in section 9.
+
+| Item | Rule |
+| --- | --- |
+| Who | The signed-in owner of the booked pet. The owner ID comes from `req.session.user.id`, never from the request. |
+| Which bookings | Only bookings with `booking_status` = `pending` |
+| Request | `POST /bookings/:id/cancel` (login required) |
+| `service_bookings` | `booking_status` changes from `pending` to `cancelled`. Price and date are unchanged; the row is kept. |
+| `payments` | The linked payment's `payment_status` changes from `pending` to `cancelled`. Amount is unchanged; `payment_reference` stays `NULL`. |
+| Transaction | Both updates happen in one transaction; if either fails, both are rolled back. |
+| Money | No refund is needed because no money was collected. |
+
+Messages (all redirect to `/bookings`):
+
+```text
+Booking cancelled. No payment was collected.
+That booking cannot be cancelled.
+Unable to cancel the booking. Please try again.
+```
+
+The second message is used when the booking is not the customer's, is not
+pending, does not exist, or the ID is invalid, so other customers' bookings are
+not revealed. Booking History shows a Cancel button only on pending rows.
+
+## 12. Revision 1 (19 November 2026): Reschedule a pending booking
+
+| Item | Rule |
+| --- | --- |
+| Who | The signed-in owner of the booked pet (from the session) |
+| Which bookings | Only bookings with `booking_status` = `pending` |
+| Requests | `GET /bookings/:id/reschedule` shows the booking and a date input; `POST /bookings/:id/reschedule` submits `bookingDate` (login required) |
+| Date rule | Same as section 4: `YYYY-MM-DD`, a real calendar date, today or later (local date) |
+| `service_bookings` | Only `booking_date` changes. `booked_price` and `booking_status` are unchanged. |
+| `payments` | No change: still pending for the same amount. |
+
+Messages:
+
+```text
+Booking rescheduled. Payment is still pending.          (redirect to /bookings)
+Choose a valid booking date (today or later).            (back to the reschedule form)
+That booking cannot be rescheduled.                       (redirect to /bookings)
+Unable to reschedule the booking. Please try again.      (redirect to /bookings)
+```
+
+Booking History shows a Reschedule button only on pending rows.
+
+## 13. Revision 1 acceptance criteria
+
+- **AC9:** Given Clara owns a pending booking, when she cancels it, then the
+  booking and its payment both become `cancelled`, the success message is shown,
+  and the row stays in Booking History without action buttons.
+- **AC10:** Given Ben does not own Clara's booking, when he sends a cancel
+  request for it, then "That booking cannot be cancelled." is shown and nothing
+  changes.
+- **AC11:** Given a booking is already cancelled, when Clara tries to cancel it
+  again, then "That booking cannot be cancelled." is shown and nothing changes.
+- **AC12:** Given the payment update fails during a cancel, then the transaction
+  is rolled back, the booking stays `pending`, and no success message is shown
+  (test on a disposable database only).
+- **AC13:** Given Clara owns a pending booking, when she reschedules it to a valid
+  date, then only `booking_date` changes; price and both statuses are unchanged.
+- **AC14:** Given a past, impossible, malformed or missing date, when Clara
+  submits the reschedule form, then the validation message is shown and nothing
+  changes.
+- **AC15:** Given the booking is not Clara's or is not pending, when she tries to
+  reschedule it, then "That booking cannot be rescheduled." is shown and nothing
+  changes.
+- **AC16:** Given a visitor is not signed in, when they use any cancel or
+  reschedule route, then they are redirected to `/login`.

@@ -86,4 +86,54 @@ function getBookingsByOwner(ownerId, callback) {
   pool.query(sql, [ownerId], callback);
 }
 
-module.exports = { createPendingBooking, getBookingsByOwner };
+// Revision 1: cancel the owner's own PENDING booking and its payment in ONE transaction.
+// Callback outcomes:
+//   callback(null, { bookingId })  -> booking and payment cancelled (committed)
+//   callback(null, null)           -> not this owner's booking / not pending / not found
+//   callback(err)                  -> database failure (rolled back)
+function cancelPendingBooking(ownerId, bookingId, callback) {
+  pool.getConnection((err, conn) => {
+    if (err) return callback(err);
+
+    conn.beginTransaction((err) => {
+      if (err) {
+        conn.release();
+        return callback(err);
+      }
+
+      // Ownership + pending check are part of the UPDATE itself
+      const bookingSql = `
+        UPDATE service_bookings AS sb
+        JOIN pets AS p ON p.id = sb.pet_id
+        SET sb.booking_status = 'cancelled'
+        WHERE sb.id = ? AND p.owner_id = ? AND sb.booking_status = 'pending'`;
+
+      conn.query(bookingSql, [bookingId, ownerId], (err, result) => {
+        if (err) return rollbackWithError(conn, err, callback);
+
+        if (result.affectedRows !== 1) {
+          return conn.rollback(() => {
+            conn.release();
+            callback(null, null);
+          });
+        }
+
+        const paymentSql = `
+          UPDATE payments SET payment_status = 'cancelled'
+          WHERE booking_id = ? AND payment_status = 'pending'`;
+
+        conn.query(paymentSql, [bookingId], (err) => {
+          if (err) return rollbackWithError(conn, err, callback);
+
+          conn.commit((err) => {
+            if (err) return rollbackWithError(conn, err, callback);
+            conn.release();
+            callback(null, { bookingId });
+          });
+        });
+      });
+    });
+  });
+}
+
+module.exports = { createPendingBooking, getBookingsByOwner, cancelPendingBooking };
